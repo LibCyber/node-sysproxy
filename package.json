@@ -1,0 +1,32 @@
+{
+  "name": "sysproxy",
+  "version": "1.0.0",
+  "description": "Use native api to set up system proxy.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js",
+    "install": "node-gyp rebuild",
+    "build": "node-gyp configure build",
+    "clean": "node-gyp clean"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LibCyber/node-sysproxy.git"
+  },
+  "keywords": [
+    "sysproxy",
+    "system proxy",
+    "network",
+    "proxy"
+  ],
+  "author": "LibCyber",
+  "license": "GPL-3.0",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/LibCyber/node-sysproxy/issues"
+  },
+  "homepage": "https://github.com/LibCyber/node-sysproxy#readme",
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  }
+}
