@@ -322,8 +322,8 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
 
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set(Napi::String::New(env, "queryProxy"), Napi::Function::New(env, QueryProxy));
-    exports.Set(Napi::String::New(env, "setProxy"), Napi::Function::New(env, SetProxy));
+    exports.Set(Napi::String::New(env, "queryWindowsProxy"), Napi::Function::New(env, QueryProxy));
+    exports.Set(Napi::String::New(env, "setWindowsProxy"), Napi::Function::New(env, SetProxy));
     return exports;
 }
 

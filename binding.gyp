@@ -1,8 +1,8 @@
 {
   "targets": [
     {
-      "target_name": "sysproxy",
-      "sources": [ "src/sysproxy.cc" ],
+      "target_name": "sysproxy_windows",
+      "sources": [ "src/sysproxy_windows.cc" ],
       "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
       "libraries": ["Wininet.lib", "Rasapi32.lib"],

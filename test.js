@@ -6,10 +6,12 @@ async function test() {
     console.log('Query proxy successfully:', result);
 
     const result2 = setProxy({
-      flags: 3,
-      autoConfigUrl: '',
+      autoProxyDiscovery: true,
+      autoProxyConfig: false,
+      autoProxyConfigUrl: '',
+      manualProxy: true,
       proxyServer: '127.0.0.1:8890',
-      bypassList: 'localhost;127.*;192.168.*;10.*'
+      bypassList: 'localhost,127.0.0.0/8,10.0.0.0/8,172.16.0.0/16,172.17.0.0/16,172.18.0.0/16,172.19.0.0/16,172.20.0.0/16,192.168.0.0/16'
     })
 
     if (result2) {
@@ -20,8 +22,10 @@ async function test() {
     console.log('Query proxy again:', result3);
 
     const result4 = setProxy({
-      flags: 0,
-      autoConfigUrl: '',
+      autoProxyDiscovery: false,
+      autoProxyConfig: false,
+      autoProxyConfigUrl: '',
+      manualProxy: false,
       proxyServer: '',
       bypassList: ''
     })
@@ -33,7 +37,7 @@ async function test() {
     const result5 = queryProxy();
     console.log('Query proxy finally:', result5);
 
-    
+
   } catch (error) {
     console.error('Error setting proxy:', error);
   }
