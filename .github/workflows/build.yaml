@@ -31,11 +31,18 @@ jobs:
     - name: Build
       run: npm run build
 
+    - name: Extract version from tag
+      id: extract_version
+      run: echo "##[set-output name=version;]$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')"
+      shell: bash
+
     - name: Package binary
       run: |
-        PACKAGE_NAME=sysproxy-v${{ steps.extract_version.outputs.version }}-${{ runner.os }}-${{ matrix.arch }}.tgz
+        $Env:PACKAGE_NAME="sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.arch }}.tgz"
         npm pack
-        mv *.tgz $PACKAGE_NAME
+        mv *.tgz $Env:PACKAGE_NAME
+      shell: pwsh
+
 
     - name: Create Release
       id: create_release
@@ -58,3 +65,4 @@ jobs:
         asset_path: ./${{ env.PACKAGE_NAME }}
         asset_name: ${{ env.PACKAGE_NAME }}
         asset_content_type: application/gzip
+
