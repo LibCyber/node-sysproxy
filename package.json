@@ -1,6 +1,6 @@
 {
   "name": "sysproxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Use native api to set up system proxy.",
   "main": "index.js",
   "scripts": {
