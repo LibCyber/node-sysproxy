@@ -34,30 +34,30 @@ jobs:
     - name: Build
       run: npm run build
 
-      - name: Package binary
-        run: |
-          PACKAGE_NAME=sysproxy-v${{ steps.extract_version.outputs.version }}-${{ runner.os }}-${{ matrix.arch }}.tgz
-          npm pack
-          mv *.tgz $PACKAGE_NAME
+    - name: Package binary
+      run: |
+        PACKAGE_NAME=sysproxy-v${{ steps.extract_version.outputs.version }}-${{ runner.os }}-${{ matrix.arch }}.tgz
+        npm pack
+        mv *.tgz $PACKAGE_NAME
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        if: matrix.arch == 'x64'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      if: matrix.arch == 'x64'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.PACKAGE_NAME }}
-          asset_name: ${{ env.PACKAGE_NAME }}
-          asset_content_type: application/gzip
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ env.PACKAGE_NAME }}
+        asset_name: ${{ env.PACKAGE_NAME }}
+        asset_content_type: application/gzip
