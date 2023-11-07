@@ -24,6 +24,9 @@ jobs:
         # 添加architecture参数用于设置Node.js的架构
         architecture: ${{ matrix.architecture }}
 
+    - name: Install Windows Build Tools
+      run: npm install --global --production windows-build-tools
+
     - name: Install Dependencies
       run: npm install
 
