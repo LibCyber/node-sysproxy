@@ -38,7 +38,7 @@ jobs:
 
     - name: Package binary
       run: |
-        $Env:PACKAGE_NAME="sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.arch }}.tgz"
+        $Env:PACKAGE_NAME="sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.architecture }}.tgz"
         npm pack
         mv *.tgz $Env:PACKAGE_NAME
       shell: pwsh
@@ -47,7 +47,7 @@ jobs:
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
-      if: matrix.arch == 'x64'
+      if: matrix.architecture == 'x64'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
