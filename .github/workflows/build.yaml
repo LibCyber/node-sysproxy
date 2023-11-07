@@ -25,9 +25,6 @@ jobs:
     - name: Install node-gyp globally
       run: npm install -g node-gyp
 
-    - name: Install Windows Build Tools
-      run: npm install --global --production windows-build-tools
-
     - name: Install Dependencies
       run: npm install
 
