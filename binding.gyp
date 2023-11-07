@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "sysproxy_windows",
+      "target_name": "sysproxy_windows_x64",
       "sources": [ "src/sysproxy_windows.cc" ],
       "include_dirs": ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
@@ -13,7 +13,8 @@
             "VCCLCompilerTool": {
               "AdditionalOptions": [ "/utf-8" ]
             }
-          }
+          },
+          "target_arch": "x64"
         }]
       ],
     }

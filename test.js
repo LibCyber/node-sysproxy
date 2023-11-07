@@ -1,6 +1,7 @@
 const { queryProxy, setProxy } = require('./index.js');  // 确保路径正确
 
 async function test() {
+  console.log("Start testing...")
   try {
     const result = queryProxy();
     console.log('Query proxy successfully:', result);
@@ -41,6 +42,8 @@ async function test() {
   } catch (error) {
     console.error('Error setting proxy:', error);
   }
+
+  console.log("End testing...")
 }
 
 test();
