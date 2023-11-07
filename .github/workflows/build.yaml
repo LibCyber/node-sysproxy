@@ -2,16 +2,15 @@ name: Build
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - '*'
 
 jobs:
   build-windows:
     runs-on: windows-latest
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 14.x, 16.x]
+        node-version: [18.x]
         # architecture: [x64, arm64]
         architecture: [x64]
 
@@ -21,8 +20,10 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-        # 添加architecture参数用于设置Node.js的架构
         architecture: ${{ matrix.architecture }}
+
+    - name: Install node-gyp globally
+      run: npm install -g node-gyp
 
     - name: Install Windows Build Tools
       run: npm install --global --production windows-build-tools
@@ -33,13 +34,30 @@ jobs:
     - name: Build
       run: npm run build
 
-    - name: Package Binary
-      run: npm pack
+      - name: Package binary
+        run: |
+          PACKAGE_NAME=sysproxy-v${{ steps.extract_version.outputs.version }}-${{ runner.os }}-${{ matrix.arch }}.tgz
+          npm pack
+          mv *.tgz $PACKAGE_NAME
 
-    - uses: actions/upload-artifact@v3
-      with:
-        name: ${{ matrix.architecture }}-node-${{ matrix.node-version }}
-        path: |
-          ./build/Release/*.node
-          ./*.tgz
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        if: matrix.arch == 'x64'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
 
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ env.PACKAGE_NAME }}
+          asset_name: ${{ env.PACKAGE_NAME }}
+          asset_content_type: application/gzip

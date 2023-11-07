@@ -42,6 +42,6 @@
     "module_path": "build/{configuration}/",
     "host": "https://github.com/LibCyber/node-sysproxy/releases/download/",
     "remote_path": "v{version}/",
-    "package_name": "{module_name}-v{version}-{platform}-{arch}.tar.gz"
+    "package_name": "{module_name}-v{version}-{platform}-{arch}.tgz"
   }
 }
