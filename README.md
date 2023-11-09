@@ -1,5 +1,8 @@
 # Node Sysproxy
 
+
+[![Build](https://github.com/LibCyber/node-sysproxy/actions/workflows/build.yaml/badge.svg)](https://github.com/LibCyber/node-sysproxy/actions/workflows/build.yaml)
+
 A tool to setup system proxy in a more native way.
 
 ## Usage
