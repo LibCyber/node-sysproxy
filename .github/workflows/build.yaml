@@ -1,6 +1,7 @@
 name: Build
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'
@@ -62,7 +63,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ env.PACKAGE_NAME }}
-        asset_name: ${{ env.PACKAGE_NAME }}
+        asset_path: ./$Env:PACKAGE_NAME
+        asset_name: $Env:PACKAGE_NAME
         asset_content_type: application/gzip
 
