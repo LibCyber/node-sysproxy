@@ -42,7 +42,6 @@ jobs:
         $Env:PACKAGE_NAME="sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.architecture }}.tgz"
         npm pack
         mv *.tgz $Env:PACKAGE_NAME
-        echo "PACKAGE_NAME=$PACKAGE_NAME" | Out-File -FilePath $ENV:GITHUB_ENV -Append
       shell: pwsh
 
 
@@ -64,7 +63,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ env.PACKAGE_NAME }}
-        asset_name: ${{ env.PACKAGE_NAME }}
+        asset_path: ./sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.architecture }}.tgz
+        asset_name: sysproxy-v${{ steps.extract_version.outputs.version }}-win32-${{ matrix.architecture }}.tgz
         asset_content_type: application/gzip
 
