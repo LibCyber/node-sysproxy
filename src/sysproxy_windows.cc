@@ -235,13 +235,13 @@ free_calloc:
 //     bypassList: 'bypass1;bypass2'
 // }
 // 提取传参中的代理配置，通过apply和apply_connect设置代理
-Napi::Value SetProxy(const Napi::CallbackInfo& info) {
+Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
     // 校验传参，每个参数都是必传的
     if (info.Length() < 1 || !info[0].IsObject()) {
         Napi::TypeError::New(env, "Wrong arguments").ThrowAsJavaScriptException();
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     Napi::Object options = info[0].As<Napi::Object>();
@@ -251,7 +251,7 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
     RET_ERRORS ret = initialize(proxyOptions, 4);
     if (ret != RET_NO_ERROR) {
         Napi::Error::New(env, "Failed to initialize proxy options").ThrowAsJavaScriptException();
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     // Initialize proxy options
@@ -266,7 +266,7 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
         delete[] proxyOptions->pOptions;
         proxyOptions->pOptions = NULL;
         delete proxyOptions;
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     if (options.Has("autoConfigUrl")) {
@@ -280,7 +280,7 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
         delete[] proxyOptions->pOptions;
         proxyOptions->pOptions = NULL;
         delete proxyOptions;
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     if (options.Has("proxyServer")) {
@@ -294,7 +294,7 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
         delete[] proxyOptions->pOptions;
         proxyOptions->pOptions = NULL;
         delete proxyOptions;
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     if (options.Has("bypassList")) {
@@ -308,16 +308,16 @@ Napi::Value SetProxy(const Napi::CallbackInfo& info) {
         delete[] proxyOptions->pOptions;
         proxyOptions->pOptions = NULL;
         delete proxyOptions;
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
     ret = apply(proxyOptions);
     if (ret != RET_NO_ERROR) {
         Napi::Error::New(env, "Failed to apply proxy options, error code: " + std::to_string(ret)).ThrowAsJavaScriptException();
-        return env.Null();
+        return Napi::Boolean::New(env, false);
     }
 
-    return env.Null();
+    return Napi::Boolean::New(env, true);
 }
 
 

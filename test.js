@@ -16,7 +16,7 @@ async function test() {
     })
 
     if (result2) {
-      console.log('Set proxy successfully');
+      console.log(`Set proxy successfully, result: ${result2}`);
     }
 
     const result3 = queryProxy();
@@ -32,7 +32,7 @@ async function test() {
     })
 
     if (result4) {
-      console.log('Reset proxy successfully');
+      console.log(`Reset proxy successfully, result: ${result4}`);
     }
 
     const result5 = queryProxy();

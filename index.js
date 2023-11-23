@@ -4,10 +4,8 @@ if (process.platform === 'win32') {
   sysproxy = require(`./build/Release/sysproxy_windows_${process.arch}.node`);
 } else if (process.platform === 'darwin') {
   // sysproxy = require(`./build/Release/sysproxy_macos_${process.arch}.node`);
-  throw new Error('Not supported yet');
 } else if (process.platform === 'linux') {
   // sysproxy = require(`./build/Release/sysproxy_linux_${process.arch}.node`);
-  throw new Error('Not supported yet');
 } else {
   throw new Error('Not supported yet');
 }
