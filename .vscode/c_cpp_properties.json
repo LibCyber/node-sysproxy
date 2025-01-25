@@ -4,7 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/node_modules/**",
-                "~\\AppData\\Local\\node-gyp\\Cache\\18.17.0\\include\\node",
+                "D:\\Software\\nvm4w\\nodejs",
                 "${default}"
             ],
             "defines": [

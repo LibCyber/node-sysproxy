@@ -93,12 +93,12 @@ Napi::Value QueryProxy(const Napi::CallbackInfo& info) {
 	options->pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
 	options->pOptions[3].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
 
-	if (!InternetQueryOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
+	if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
 	{
 		// Set option to INTERNET_PER_CONN_FLAGS and try again to compatible with older versions of Windows.
 		options->pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
 
-		if (!InternetQueryOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
+		if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
 		{
 			DWORD error = GetLastError();
             Napi::Error::New(env, "Failed to query proxy configuration. Error code: " + std::to_string(error)).ThrowAsJavaScriptException();
@@ -139,23 +139,23 @@ Napi::Value QueryProxy(const Napi::CallbackInfo& info) {
     return result;
 }
 
-RET_ERRORS apply_connect(INTERNET_PER_CONN_OPTION_LIST* options, LPTSTR conn)
+RET_ERRORS apply_connect(INTERNET_PER_CONN_OPTION_LIST* options, LPWSTR conn)
 {
 	options->pszConnection = conn;
 
-	BOOL result = InternetSetOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, sizeof(INTERNET_PER_CONN_OPTION_LIST));
+	BOOL result = InternetSetOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, sizeof(INTERNET_PER_CONN_OPTION_LIST));
 	if (!result)
 	{
 		return SYSCALL_FAILED;
 	}
 
-	result = InternetSetOption(NULL, INTERNET_OPTION_PROXY_SETTINGS_CHANGED, NULL, 0);
+	result = InternetSetOptionW(NULL, INTERNET_OPTION_PROXY_SETTINGS_CHANGED, NULL, 0);
 	if (!result)
 	{
 		return SYSCALL_FAILED;
 	}
 
-	result = InternetSetOption(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
+	result = InternetSetOptionW(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
 	if (!result)
 	{
 		return SYSCALL_FAILED;
@@ -178,7 +178,7 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 		goto free_calloc;
 
 	// Find connections and apply proxy settings
-	dwRet = RasEnumEntries(NULL, NULL, lpRasEntryName, &dwCb, &dwEntries);
+	dwRet = RasEnumEntriesW(NULL, NULL, lpRasEntryName, &dwCb, &dwEntries);
 
 	if (dwRet == ERROR_BUFFER_TOO_SMALL)
 	{
@@ -195,7 +195,7 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 			lpRasEntryName[i].dwSize = sizeof(RASENTRYNAME);
 		}
 
-		dwRet = RasEnumEntries(NULL, NULL, lpRasEntryName, &dwCb, &dwEntries);
+		dwRet = RasEnumEntriesW(NULL, NULL, lpRasEntryName, &dwCb, &dwEntries);
 	}
 
 	if (dwRet != ERROR_SUCCESS)
