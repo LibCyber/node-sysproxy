@@ -11,7 +11,7 @@
         ["OS=='win'", {
           "msvs_settings": {
             "VCCLCompilerTool": {
-              "AdditionalOptions": [ "/utf-8" ]
+              "AdditionalOptions": [ "/utf-8", "/EHsc" ]
             }
           },
           "target_arch": "x64"

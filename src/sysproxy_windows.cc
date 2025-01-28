@@ -5,6 +5,7 @@
 #include <vector>
 #include <Ras.h>
 #include <Raserror.h>
+// #include <iostream>
 
 enum RET_ERRORS
 {
@@ -15,6 +16,9 @@ enum RET_ERRORS
 	NO_MEMORY = 4,
 	INVALID_OPTION_COUNT = 5,
 };
+
+// 支持格式化输出调试信息
+#define DEBUG_LOG(msg) printf("[Debug] %s\n", msg);
 
 // 将标准字符串（UTF-8）转换为宽字符串（UTF-16）
 LPWSTR StringToLPWSTR(const std::string& inputStr) {
@@ -50,24 +54,59 @@ std::string LPWSTRToString(const wchar_t* wideString) {
     return utf8String;
 }
 
-RET_ERRORS initialize(INTERNET_PER_CONN_OPTION_LIST* options, int option_count)
+RET_ERRORS initialize(INTERNET_PER_CONN_OPTION_LIST* optionList, int optionCount)
 {
-    if (option_count < 1)
+    // DEBUG_LOG("initialize called");
+    if (optionCount < 1)
     {
         return INVALID_OPTION_COUNT;
     }
 
-    options->dwSize = sizeof(INTERNET_PER_CONN_OPTION_LIST);
-    options->dwOptionCount = option_count;
-    options->dwOptionError = 0;
+    optionList->dwSize = sizeof(INTERNET_PER_CONN_OPTION_LIST);
+    optionList->dwOptionCount = optionCount;
+    optionList->dwOptionError = 0;
 
-    options->pOptions = new(std::nothrow) INTERNET_PER_CONN_OPTION[option_count];
-    if (options->pOptions == nullptr)
+    optionList->pOptions = new(std::nothrow) INTERNET_PER_CONN_OPTION[optionCount];
+    if (optionList->pOptions == nullptr)
     {
         return NO_MEMORY;
     }
 
+    // DEBUG_LOG("initialize success");
     return RET_NO_ERROR;
+}
+
+// 检查并释放 optionList
+void free_optionList(INTERNET_PER_CONN_OPTION_LIST* optionList) {
+    // DEBUG_LOG("free_optionList called");
+    if (!optionList) return;
+
+    if (optionList->pOptions) {
+        for (DWORD i = 0; i < optionList->dwOptionCount; i++) {
+            // 只释放自己 new 出来的那几项
+            if ((optionList->pOptions[i].dwOption == INTERNET_PER_CONN_PROXY_SERVER ||
+                 optionList->pOptions[i].dwOption == INTERNET_PER_CONN_PROXY_BYPASS ||
+                 optionList->pOptions[i].dwOption == INTERNET_PER_CONN_AUTOCONFIG_URL) &&
+                optionList->pOptions[i].Value.pszValue != NULL)
+            {
+                // 在 SetProxy 中才会使用 new wchar_t[] 
+                // 所以这里仅在它不为 NULL 时 delete[]，没问题。
+                delete[] optionList->pOptions[i].Value.pszValue;
+                optionList->pOptions[i].Value.pszValue = 0;
+            } else {
+                if (optionList->pOptions[i].dwOption == INTERNET_PER_CONN_FLAGS_UI || optionList->pOptions[i].dwOption == INTERNET_PER_CONN_FLAGS) {
+                    // LocalFree(optionList->pOptions[i].Value.pszValue);
+                    // optionList->pOptions[i].Value.pszValue = NULL;
+                }
+            }
+        }
+        
+        delete[] optionList->pOptions;
+        optionList->pOptions = NULL;
+    }
+    delete optionList;
+
+    // DEBUG_LOG("free_optionList success");
 }
 
 // 返回代理配置，返回值格式：{
@@ -77,73 +116,79 @@ RET_ERRORS initialize(INTERNET_PER_CONN_OPTION_LIST* options, int option_count)
 //     bypassList: 'bypass1;bypass2'
 // }
 Napi::Value QueryProxy(const Napi::CallbackInfo& info) {
+    // DEBUG_LOG("QueryProxy called");
     Napi::Env env = info.Env();
 
-    INTERNET_PER_CONN_OPTION_LIST* options = new INTERNET_PER_CONN_OPTION_LIST;
-    memset(options, 0, sizeof(INTERNET_PER_CONN_OPTION_LIST));
-    initialize(options, 4);
+    INTERNET_PER_CONN_OPTION_LIST* optionList = new INTERNET_PER_CONN_OPTION_LIST;
+    memset(optionList, 0, sizeof(INTERNET_PER_CONN_OPTION_LIST));
+    initialize(optionList, 4);
     
     DWORD dwLen = sizeof(INTERNET_PER_CONN_OPTION_LIST);
 
     // On Windows 7 or above (IE8+), query with INTERNET_PER_CONN_FLAGS_UI is recommended.
 	// See https://msdn.microsoft.com/en-us/library/windows/desktop/aa385145(v=vs.85).aspx
-	options->pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS_UI;
+    optionList->pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS_UI;
 
-	options->pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
-	options->pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
-	options->pOptions[3].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
+    optionList->pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+    optionList->pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
+    optionList->pOptions[3].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
 
-	if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
+	if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, optionList, &dwLen))
 	{
+		// DEBUG_LOG("InternetQueryOptionW failed");
 		// Set option to INTERNET_PER_CONN_FLAGS and try again to compatible with older versions of Windows.
-		options->pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
+		optionList->pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
 
-		if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, &dwLen))
+		if (!InternetQueryOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, optionList, &dwLen))
 		{
 			DWORD error = GetLastError();
             Napi::Error::New(env, "Failed to query proxy configuration. Error code: " + std::to_string(error)).ThrowAsJavaScriptException();
             // Free memory
-            delete[] options->pOptions;
-            options->pOptions = NULL;
-            delete options;
+            free_optionList(optionList);
             return env.Null();
 		}
 	}
 
+    // DEBUG_LOG("InternetQueryOptionW success");
+
     Napi::Object result = Napi::Object::New(env);
-    result.Set(Napi::String::New(env, "flags"), Napi::Number::New(env, options->pOptions[0].Value.dwValue));
+    result.Set(Napi::String::New(env, "flags"), Napi::Number::New(env, optionList->pOptions[0].Value.dwValue));
     // 将宽字符字符串转换为UTF-8字符串
-    std::string proxyServer = LPWSTRToString(options->pOptions[1].Value.pszValue);
-    std::string bypassList = LPWSTRToString(options->pOptions[2].Value.pszValue);
-    std::string autoConfigUrl = LPWSTRToString(options->pOptions[3].Value.pszValue);
+    std::string proxyServer = LPWSTRToString(optionList->pOptions[1].Value.pszValue);
+    std::string bypassList = LPWSTRToString(optionList->pOptions[2].Value.pszValue);
+    std::string autoConfigUrl = LPWSTRToString(optionList->pOptions[3].Value.pszValue);
+
+    // **马上释放** WinINet 分配的字符串
+    if (optionList->pOptions[1].Value.pszValue) {
+        LocalFree(optionList->pOptions[1].Value.pszValue);
+        optionList->pOptions[1].Value.pszValue = NULL;
+    }
+    if (optionList->pOptions[2].Value.pszValue) {
+        LocalFree(optionList->pOptions[2].Value.pszValue);
+        optionList->pOptions[2].Value.pszValue = NULL;
+    }
+    if (optionList->pOptions[3].Value.pszValue) {
+        LocalFree(optionList->pOptions[3].Value.pszValue);
+        optionList->pOptions[3].Value.pszValue = NULL;
+    }
 
     result.Set(Napi::String::New(env, "proxyServer"), Napi::String::New(env, proxyServer));
     result.Set(Napi::String::New(env, "bypassList"), Napi::String::New(env, bypassList));
     result.Set(Napi::String::New(env, "autoConfigUrl"), Napi::String::New(env, autoConfigUrl));
 
     // Free memory
-    for (DWORD i = 1; i < options->dwOptionCount; ++i)
-	{
-		if (options->pOptions[i].Value.pszValue == NULL)
-		{
-			continue;
-		}
-		GlobalFree(options->pOptions[i].Value.pszValue);
-		options->pOptions[i].Value.pszValue = NULL;
-	}
+    free_optionList(optionList);
 
-    delete[] options->pOptions;
-    options->pOptions = NULL;
-    delete options;
-
+    // DEBUG_LOG("QueryProxy success");
     return result;
 }
 
-RET_ERRORS apply_connect(INTERNET_PER_CONN_OPTION_LIST* options, LPWSTR conn)
+RET_ERRORS apply_connect(INTERNET_PER_CONN_OPTION_LIST* optionList, LPWSTR conn)
 {
-	options->pszConnection = conn;
+    // DEBUG_LOG("apply_connect called");
+	optionList->pszConnection = conn;
 
-	BOOL result = InternetSetOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, options, sizeof(INTERNET_PER_CONN_OPTION_LIST));
+	BOOL result = InternetSetOptionW(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, optionList, sizeof(INTERNET_PER_CONN_OPTION_LIST));
 	if (!result)
 	{
 		return SYSCALL_FAILED;
@@ -161,12 +206,14 @@ RET_ERRORS apply_connect(INTERNET_PER_CONN_OPTION_LIST* options, LPWSTR conn)
 		return SYSCALL_FAILED;
 	}
 
+    // DEBUG_LOG("apply_connect success");
 	return RET_NO_ERROR;
 }
 
 
-RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
+RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* optionList)
 {
+    // DEBUG_LOG("apply called");
 	RET_ERRORS ret;
 	DWORD dwCb = 0;
 	DWORD dwRet;
@@ -174,8 +221,10 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 	LPRASENTRYNAME lpRasEntryName = NULL;
 
 	// Set LAN
-	if ((ret = apply_connect(options, NULL)) > RET_NO_ERROR)
-		goto free_calloc;
+	if ((ret = apply_connect(optionList, NULL)) > RET_NO_ERROR)
+	{
+		return ret;
+	}
 
 	// Find connections and apply proxy settings
 	dwRet = RasEnumEntriesW(NULL, NULL, lpRasEntryName, &dwCb, &dwEntries);
@@ -186,8 +235,7 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 
 		if (lpRasEntryName == NULL)
 		{
-			ret = NO_MEMORY;
-			goto free_calloc;
+			return NO_MEMORY;
 		}
 
 		for (DWORD i = 0; i < dwEntries; i++)
@@ -200,8 +248,9 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 
 	if (dwRet != ERROR_SUCCESS)
 	{
-		ret = SYSCALL_FAILED;
-		goto free_ras;
+    	HeapFree(GetProcessHeap(), 0, lpRasEntryName);
+	    lpRasEntryName = NULL;
+		return SYSCALL_FAILED;
 	}
 	else
 	{
@@ -209,34 +258,18 @@ RET_ERRORS apply(INTERNET_PER_CONN_OPTION_LIST* options)
 		{
 			for (DWORD i = 0; i < dwEntries; i++)
 			{
-				if ((ret = apply_connect(options, lpRasEntryName[i].szEntryName)) > RET_NO_ERROR)
-					goto free_ras;
+				if ((ret = apply_connect(optionList, lpRasEntryName[i].szEntryName)) > RET_NO_ERROR)
+				{
+					HeapFree(GetProcessHeap(), 0, lpRasEntryName);
+					lpRasEntryName = NULL;
+					return ret;
+				}
 			}
 		}
 	}
 
-	ret = RET_NO_ERROR;
-
-free_ras:
-	HeapFree(GetProcessHeap(), 0, lpRasEntryName);
-	lpRasEntryName = NULL;
-	/* fall through */
-free_calloc:
-    delete[] options->pOptions;  // 与前面 new[] 对应
-	options->pOptions = NULL;
-
-	return ret;
-}
-
-// 检查并释放 proxyOptions
-void free_proxyOptions(INTERNET_PER_CONN_OPTION_LIST* options) {
-    if (options->pOptions) {
-        delete[] options->pOptions;
-        options->pOptions = NULL;
-    }
-    if (options) {
-        delete options;
-    }
+    // DEBUG_LOG("apply success");
+	return RET_NO_ERROR;
 }
 
 // 设置代理，传参格式：{
@@ -247,79 +280,90 @@ void free_proxyOptions(INTERNET_PER_CONN_OPTION_LIST* options) {
 // }
 // 提取传参中的代理配置，通过apply和apply_connect设置代理
 Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
+    // DEBUG_LOG("SetProxy called");
     Napi::Env env = info.Env();
+    try
+    {
+        // 校验传参，每个参数都是必传的
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            Napi::TypeError::New(env, "Wrong arguments").ThrowAsJavaScriptException();
+            return Napi::Boolean::New(env, false);
+        }
 
-    // 校验传参，每个参数都是必传的
-    if (info.Length() < 1 || !info[0].IsObject()) {
-        Napi::TypeError::New(env, "Wrong arguments").ThrowAsJavaScriptException();
+        Napi::Object inputInfo = info[0].As<Napi::Object>();
+
+        INTERNET_PER_CONN_OPTION_LIST* optionList = new INTERNET_PER_CONN_OPTION_LIST;
+        memset(optionList, 0, sizeof(INTERNET_PER_CONN_OPTION_LIST));
+        RET_ERRORS ret = initialize(optionList, 4);
+        if (ret != RET_NO_ERROR) {
+            Napi::Error::New(env, "Failed to initialize proxy options").ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        // Initialize proxy options
+        int optionCount = 0;
+        if (inputInfo.Has("flags")) {
+            optionList->pOptions[optionCount].dwOption = INTERNET_PER_CONN_FLAGS_UI;
+            optionList->pOptions[optionCount].Value.dwValue = inputInfo.Get("flags").As<Napi::Number>().Int32Value();
+            optionCount++;
+        } else {
+            Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        if (inputInfo.Has("autoConfigUrl")) {
+            optionList->pOptions[optionCount].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
+            std::string autoConfigUrl = inputInfo.Get("autoConfigUrl").As<Napi::String>().Utf8Value();
+            optionList->pOptions[optionCount].Value.pszValue = StringToLPWSTR(autoConfigUrl);
+            optionCount++;
+        } else {
+            Napi::Error::New(env, "Missing autoConfigUrl").ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        if (inputInfo.Has("proxyServer")) {
+            optionList->pOptions[optionCount].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+            std::string proxyServer = inputInfo.Get("proxyServer").As<Napi::String>().Utf8Value();
+            optionList->pOptions[optionCount].Value.pszValue = StringToLPWSTR(proxyServer);
+            optionCount++;
+        } else {
+            Napi::Error::New(env, "Missing proxyServer").ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        if (inputInfo.Has("bypassList")) {
+            optionList->pOptions[optionCount].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
+            std::string bypassList = inputInfo.Get("bypassList").As<Napi::String>().Utf8Value();
+            optionList->pOptions[optionCount].Value.pszValue = StringToLPWSTR(bypassList);
+            optionCount++;
+        } else {
+            Napi::Error::New(env, "Missing bypassList").ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        ret = apply(optionList);
+        if (ret != RET_NO_ERROR) {
+            Napi::Error::New(env, "Failed to apply proxy options, error code: " + std::to_string(ret)).ThrowAsJavaScriptException();
+            free_optionList(optionList);
+            return Napi::Boolean::New(env, false);
+        }
+
+        
+        free_optionList(optionList);
+
+        // DEBUG_LOG("SetProxy success");
+        return Napi::Boolean::New(env, true);
+    }
+    catch(const std::exception& e)
+    {
+        Napi::Error::New(env, "Failed to set proxy, error: " + std::string(e.what())).ThrowAsJavaScriptException();
         return Napi::Boolean::New(env, false);
     }
-
-    Napi::Object options = info[0].As<Napi::Object>();
-
-    INTERNET_PER_CONN_OPTION_LIST* proxyOptions = new INTERNET_PER_CONN_OPTION_LIST;
-    memset(proxyOptions, 0, sizeof(INTERNET_PER_CONN_OPTION_LIST));
-    RET_ERRORS ret = initialize(proxyOptions, 4);
-    if (ret != RET_NO_ERROR) {
-        Napi::Error::New(env, "Failed to initialize proxy options").ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    // Initialize proxy options
-    int option_count = 0;
-    if (options.Has("flags")) {
-        proxyOptions->pOptions[option_count].dwOption = INTERNET_PER_CONN_FLAGS;
-        proxyOptions->pOptions[option_count].Value.dwValue = options.Get("flags").As<Napi::Number>().Int32Value();
-        option_count++;
-    } else {
-        Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    if (options.Has("autoConfigUrl")) {
-        proxyOptions->pOptions[option_count].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
-        std::string autoConfigUrl = options.Get("autoConfigUrl").As<Napi::String>().Utf8Value();
-        proxyOptions->pOptions[option_count].Value.pszValue = StringToLPWSTR(autoConfigUrl);
-        option_count++;
-    } else {
-        Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    if (options.Has("proxyServer")) {
-        proxyOptions->pOptions[option_count].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
-        std::string proxyServer = options.Get("proxyServer").As<Napi::String>().Utf8Value();
-        proxyOptions->pOptions[option_count].Value.pszValue = StringToLPWSTR(proxyServer);
-        option_count++;
-    } else {
-        Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    if (options.Has("bypassList")) {
-        proxyOptions->pOptions[option_count].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
-        std::string bypassList = options.Get("bypassList").As<Napi::String>().Utf8Value();
-        proxyOptions->pOptions[option_count].Value.pszValue = StringToLPWSTR(bypassList);
-        option_count++;
-    } else {
-        Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    ret = apply(proxyOptions);
-    if (ret != RET_NO_ERROR) {
-        Napi::Error::New(env, "Failed to apply proxy options, error code: " + std::to_string(ret)).ThrowAsJavaScriptException();
-        free_proxyOptions(proxyOptions);
-        return Napi::Boolean::New(env, false);
-    }
-
-    free_proxyOptions(proxyOptions);
-    return Napi::Boolean::New(env, true);
 }
 
 
