@@ -222,10 +222,21 @@ free_ras:
 	lpRasEntryName = NULL;
 	/* fall through */
 free_calloc:
-	free(options->pOptions);
+    delete[] options->pOptions;  // 与前面 new[] 对应
 	options->pOptions = NULL;
 
 	return ret;
+}
+
+// 检查并释放 proxyOptions
+void free_proxyOptions(INTERNET_PER_CONN_OPTION_LIST* options) {
+    if (options->pOptions) {
+        delete[] options->pOptions;
+        options->pOptions = NULL;
+    }
+    if (options) {
+        delete options;
+    }
 }
 
 // 设置代理，传参格式：{
@@ -251,6 +262,7 @@ Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
     RET_ERRORS ret = initialize(proxyOptions, 4);
     if (ret != RET_NO_ERROR) {
         Napi::Error::New(env, "Failed to initialize proxy options").ThrowAsJavaScriptException();
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
@@ -262,10 +274,7 @@ Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
         option_count++;
     } else {
         Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        // Free memory
-        delete[] proxyOptions->pOptions;
-        proxyOptions->pOptions = NULL;
-        delete proxyOptions;
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
@@ -276,10 +285,7 @@ Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
         option_count++;
     } else {
         Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        // Free memory
-        delete[] proxyOptions->pOptions;
-        proxyOptions->pOptions = NULL;
-        delete proxyOptions;
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
@@ -290,10 +296,7 @@ Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
         option_count++;
     } else {
         Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        // Free memory
-        delete[] proxyOptions->pOptions;
-        proxyOptions->pOptions = NULL;
-        delete proxyOptions;
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
@@ -304,19 +307,18 @@ Napi::Boolean SetProxy(const Napi::CallbackInfo& info) {
         option_count++;
     } else {
         Napi::Error::New(env, "Missing flags").ThrowAsJavaScriptException();
-        // Free memory
-        delete[] proxyOptions->pOptions;
-        proxyOptions->pOptions = NULL;
-        delete proxyOptions;
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
     ret = apply(proxyOptions);
     if (ret != RET_NO_ERROR) {
         Napi::Error::New(env, "Failed to apply proxy options, error code: " + std::to_string(ret)).ThrowAsJavaScriptException();
+        free_proxyOptions(proxyOptions);
         return Napi::Boolean::New(env, false);
     }
 
+    free_proxyOptions(proxyOptions);
     return Napi::Boolean::New(env, true);
 }
 
